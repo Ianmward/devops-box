@@ -8,10 +8,10 @@ fi
 TERRAFORM_VERSION="0.11.7"
 PACKER_VERSION="1.2.4"
 # create new ssh key
-[[ ! -f /home/ubuntu/.ssh/mykey ]] \
-&& mkdir -p /home/ubuntu/.ssh \
-&& ssh-keygen -f /home/ubuntu/.ssh/mykey -N '' \
-&& chown -R ubuntu:ubuntu /home/ubuntu/.ssh
+[[ ! -f /home/vagrant/.ssh/mykey ]] \
+&& mkdir -p /home/vagrant/.ssh \
+&& ssh-keygen -f /home/vagrant/.ssh/mykey -N '' \
+&& chown -R vagrant:vagrant /home/vagrant/.ssh
 
 # install packages
 if [ ${REDHAT_BASED} ] ; then
@@ -19,10 +19,22 @@ if [ ${REDHAT_BASED} ] ; then
   yum install -y docker ansible unzip wget
 else 
   apt-get update
-  apt-get -y install docker.io ansible unzip
+  apt-get -y install ansible unzip
+  apt-get install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    software-properties-common
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+  add-apt-repository \
+    "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+    $(lsb_release -cs) \
+    stable"
+  apt-get update
+  apt-get install docker-ce
 fi
 # add docker privileges
-usermod -G docker ubuntu
+usermod -G docker vagrant
 # install pip
 pip install -U pip && pip3 install -U pip
 if [[ $? == 127 ]]; then
@@ -51,6 +63,20 @@ P_RETVAL=$?
 && wget -q https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip \
 && unzip -o packer_${PACKER_VERSION}_linux_amd64.zip -d /usr/local/bin \
 && rm packer_${PACKER_VERSION}_linux_amd64.zip
+
+#Kubectl
+apt-get update && apt-get install -y apt-transport-https
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+touch /etc/apt/sources.list.d/kubernetes.list 
+echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list
+apt-get update
+apt-get install -y kubectl
+
+# helm
+curl https://storage.googleapis.com/kubernetes-helm/helm-v2.10.0-linux-amd64.tar.gz | tar xvzf -
+mv linux-amd64/helm /usr/local/bin/helm
+chmod 755 /usr/local/bin/helm
+rm -rf linux-amd64
 
 # clean up
 if [ ! ${REDHAT_BASED} ] ; then
